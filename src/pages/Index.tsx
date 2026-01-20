@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, CreditCard, Receipt, Plus, TrendingUp } from "lucide-react";
+import { Wallet, CreditCard, Receipt, Plus, TrendingUp, AlertTriangle } from "lucide-react";
 import { SummaryCard } from "@/components/finance/SummaryCard";
 import { CreditCardBill } from "@/components/finance/CreditCardBill";
 import { ExpenseItem } from "@/components/finance/ExpenseItem";
@@ -7,6 +7,7 @@ import { QuickAddExpense } from "@/components/finance/QuickAddExpense";
 import { PeriodSelector } from "@/components/finance/PeriodSelector";
 import { BankFormDialog } from "@/components/finance/BankFormDialog";
 import { SalaryInput } from "@/components/finance/SalaryInput";
+import { BillItem } from "@/components/finance/BillDetailsDialog";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -24,6 +25,7 @@ interface Bill {
   bankName: string;
   value: number;
   isPaid: boolean;
+  items: BillItem[];
 }
 
 interface Expense {
@@ -33,10 +35,27 @@ interface Expense {
 }
 
 const initialBills: Bill[] = [
-  { id: "1", bankName: "Nubank", value: 1250.00, isPaid: false },
-  { id: "2", bankName: "Inter", value: 890.50, isPaid: true },
-  { id: "3", bankName: "Itaú", value: 2100.00, isPaid: false },
-  { id: "4", bankName: "C6 Bank", value: 450.75, isPaid: false },
+  { 
+    id: "1", 
+    bankName: "Nubank", 
+    value: 1250.00, 
+    isPaid: false,
+    items: [
+      { id: "1a", description: "iPhone 15", totalValue: 6000, currentInstallment: 3, totalInstallments: 12 },
+      { id: "1b", description: "Tênis Nike", totalValue: 800, currentInstallment: 2, totalInstallments: 4 },
+    ]
+  },
+  { id: "2", bankName: "Inter", value: 890.50, isPaid: true, items: [] },
+  { 
+    id: "3", 
+    bankName: "Itaú", 
+    value: 2100.00, 
+    isPaid: false,
+    items: [
+      { id: "3a", description: "Geladeira", totalValue: 4500, currentInstallment: 5, totalInstallments: 10 },
+    ]
+  },
+  { id: "4", bankName: "C6 Bank", value: 450.75, isPaid: false, items: [] },
 ];
 
 const initialExpenses: Expense[] = [
@@ -67,6 +86,17 @@ const Index = () => {
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.value, 0);
   const totalSpent = totalBills + totalExpenses;
   const balance = salary - totalSpent;
+
+  // Calcular dívida total (parcelas restantes)
+  const calculateBillTotalDebt = (bill: Bill) => {
+    return bill.items.reduce((sum, item) => {
+      const remainingInstallments = item.totalInstallments - item.currentInstallment + 1;
+      const installmentValue = item.totalValue / item.totalInstallments;
+      return sum + (installmentValue * remainingInstallments);
+    }, 0);
+  };
+
+  const totalDebtAllCards = bills.reduce((sum, bill) => sum + calculateBillTotalDebt(bill), 0);
 
   // Handlers
   const handleAddValueToBill = (billId: string, value: number) => {
@@ -115,10 +145,34 @@ const Index = () => {
         bankName: data.bankName,
         value: data.value,
         isPaid: false,
+        items: [],
       };
       setBills((prev) => [...prev, newBill]);
     }
     setEditingBill(null);
+  };
+
+  const handleUpdateBillItems = (billId: string, items: BillItem[]) => {
+    setBills((prev) =>
+      prev.map((bill) => {
+        if (bill.id === billId) {
+          // Recalcular o valor mensal baseado nos itens
+          const itemsMonthlyValue = items.reduce((sum, item) => {
+            return sum + (item.totalValue / item.totalInstallments);
+          }, 0);
+          // Manter valores avulsos + valor dos itens
+          const baseValue = bill.value - bill.items.reduce((sum, item) => {
+            return sum + (item.totalValue / item.totalInstallments);
+          }, 0);
+          return { 
+            ...bill, 
+            items,
+            value: Math.max(0, baseValue) + itemsMonthlyValue
+          };
+        }
+        return bill;
+      })
+    );
   };
 
   const handleDeleteBill = (billId: string) => {
@@ -188,7 +242,7 @@ const Index = () => {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8">
         {/* Summary Cards */}
         <section>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <SummaryCard
               title="Saldo Disponível"
               value={balance}
@@ -207,9 +261,15 @@ const Index = () => {
               variant="warning"
             />
             <SummaryCard
-              title="Lançamentos Avulsos"
+              title="Avulsos"
               value={totalExpenses}
               icon={Receipt}
+            />
+            <SummaryCard
+              title="Dívida Total"
+              value={totalDebtAllCards}
+              icon={AlertTriangle}
+              variant="warning"
             />
           </div>
         </section>
@@ -250,10 +310,13 @@ const Index = () => {
                   bankName={bill.bankName}
                   value={bill.value}
                   isPaid={bill.isPaid}
+                  items={bill.items}
+                  totalDebt={calculateBillTotalDebt(bill)}
                   onAddValue={handleAddValueToBill}
                   onToggleStatus={handleToggleBillStatus}
                   onEdit={handleEditBill}
                   onDelete={handleDeleteBill}
+                  onUpdateItems={handleUpdateBillItems}
                 />
               ))}
             </div>
