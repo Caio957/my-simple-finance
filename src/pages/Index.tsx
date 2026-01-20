@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Wallet, CreditCard, Receipt, Plus } from "lucide-react";
+import { Wallet, CreditCard, Receipt, Plus, TrendingUp } from "lucide-react";
 import { SummaryCard } from "@/components/finance/SummaryCard";
 import { CreditCardBill } from "@/components/finance/CreditCardBill";
 import { ExpenseItem } from "@/components/finance/ExpenseItem";
 import { QuickAddExpense } from "@/components/finance/QuickAddExpense";
 import { PeriodSelector } from "@/components/finance/PeriodSelector";
 import { BankFormDialog } from "@/components/finance/BankFormDialog";
+import { SalaryInput } from "@/components/finance/SalaryInput";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -50,6 +51,9 @@ const Index = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
+  // Salary state
+  const [salary, setSalary] = useState(0);
+
   // Modal states
   const [isBankDialogOpen, setIsBankDialogOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
@@ -62,6 +66,7 @@ const Index = () => {
     .reduce((sum, bill) => sum + bill.value, 0);
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.value, 0);
   const totalSpent = totalBills + totalExpenses;
+  const balance = salary - totalSpent;
 
   // Handlers
   const handleAddValueToBill = (billId: string, value: number) => {
@@ -163,14 +168,19 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h1 className="text-xl font-semibold text-foreground">Meu Financeiro</h1>
-            <PeriodSelector
-              month={currentMonth}
-              year={currentYear}
-              onPrevious={handlePreviousMonth}
-              onNext={handleNextMonth}
-            />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <h1 className="text-xl font-semibold text-foreground">Meu Financeiro</h1>
+              <PeriodSelector
+                month={currentMonth}
+                year={currentYear}
+                onPrevious={handlePreviousMonth}
+                onNext={handleNextMonth}
+              />
+            </div>
+            <div className="flex items-center justify-between border-t border-border pt-3 -mb-1">
+              <SalaryInput value={salary} onChange={setSalary} />
+            </div>
           </div>
         </div>
       </header>
@@ -178,12 +188,17 @@ const Index = () => {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8">
         {/* Summary Cards */}
         <section>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <SummaryCard
-              title="Total Gasto no Período"
+              title="Saldo Disponível"
+              value={balance}
+              icon={TrendingUp}
+              variant="primary"
+            />
+            <SummaryCard
+              title="Total Gasto"
               value={totalSpent}
               icon={Wallet}
-              variant="primary"
             />
             <SummaryCard
               title="Faturas Pendentes"
