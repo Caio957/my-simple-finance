@@ -16,6 +16,8 @@ export function SummaryCard({ title, value, icon: Icon, variant = "default" }: S
     }).format(value);
   };
 
+  const isNegative = value < 0;
+
   return (
     <Card className="shadow-card hover:shadow-card-hover transition-shadow duration-200">
       <CardContent className="p-5">
@@ -23,6 +25,7 @@ export function SummaryCard({ title, value, icon: Icon, variant = "default" }: S
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground font-medium">{title}</p>
             <p className={`text-2xl font-semibold tracking-tight ${
+              isNegative ? "text-destructive" :
               variant === "primary" ? "text-primary" : 
               variant === "warning" ? "text-warning" : 
               "text-foreground"
@@ -31,6 +34,7 @@ export function SummaryCard({ title, value, icon: Icon, variant = "default" }: S
             </p>
           </div>
           <div className={`p-2.5 rounded-xl ${
+            isNegative ? "bg-destructive/10 text-destructive" :
             variant === "primary" ? "bg-primary/10 text-primary" :
             variant === "warning" ? "bg-warning/10 text-warning" :
             "bg-muted text-muted-foreground"
