@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, CreditCard, Check, Clock } from "lucide-react";
+import { Plus, CreditCard, Check, Clock, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CreditCardBillProps {
   id: string;
@@ -18,6 +24,8 @@ interface CreditCardBillProps {
   isPaid: boolean;
   onAddValue: (id: string, value: number) => void;
   onToggleStatus: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 export function CreditCardBill({
@@ -27,6 +35,8 @@ export function CreditCardBill({
   isPaid,
   onAddValue,
   onToggleStatus,
+  onEdit,
+  onDelete,
 }: CreditCardBillProps) {
   const [inputValue, setInputValue] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -55,6 +65,10 @@ export function CreditCardBill({
       Bradesco: "bg-red-500",
       "C6 Bank": "bg-gray-800",
       Santander: "bg-red-600",
+      "Banco do Brasil": "bg-yellow-500",
+      Caixa: "bg-blue-500",
+      "BTG Pactual": "bg-blue-900",
+      XP: "bg-yellow-400",
     };
     return colors[bank] || "bg-primary";
   };
@@ -69,26 +83,54 @@ export function CreditCardBill({
             </div>
             <span className="font-medium text-foreground">{bankName}</span>
           </div>
-          <button
-            onClick={() => onToggleStatus(id)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-              isPaid
-                ? "bg-success/10 text-success"
-                : "bg-warning/10 text-warning"
-            }`}
-          >
-            {isPaid ? (
-              <>
-                <Check className="h-3 w-3" />
-                Pago
-              </>
-            ) : (
-              <>
-                <Clock className="h-3 w-3" />
-                Pendente
-              </>
-            )}
-          </button>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onToggleStatus(id)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                isPaid
+                  ? "bg-success/10 text-success"
+                  : "bg-warning/10 text-warning"
+              }`}
+            >
+              {isPaid ? (
+                <>
+                  <Check className="h-3 w-3" />
+                  Pago
+                </>
+              ) : (
+                <>
+                  <Clock className="h-3 w-3" />
+                  Pendente
+                </>
+              )}
+            </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit(id)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => onDelete(id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         <p className="text-2xl font-semibold text-foreground mb-4">
