@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, CreditCard, Receipt, Plus, TrendingUp, AlertTriangle } from "lucide-react";
+import { Wallet, CreditCard, Receipt, Plus, TrendingUp, AlertTriangle, LogOut } from "lucide-react";
 import { SummaryCard } from "@/components/finance/SummaryCard";
 import { CreditCardBill } from "@/components/finance/CreditCardBill";
 import { ExpenseItem } from "@/components/finance/ExpenseItem";
@@ -9,6 +9,7 @@ import { BankFormDialog } from "@/components/finance/BankFormDialog";
 import { SalaryInput } from "@/components/finance/SalaryInput";
 import { BillItem } from "@/components/finance/BillDetailsDialog";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +66,7 @@ const initialExpenses: Expense[] = [
 ];
 
 const Index = () => {
+  const { signOut } = useAuth();
   const [bills, setBills] = useState<Bill[]>(initialBills);
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
@@ -224,7 +226,18 @@ const Index = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h1 className="text-xl font-semibold text-foreground">Meu Financeiro</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-semibold text-foreground">Meu Financeiro</h1>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={signOut}
+                  title="Sair"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
               <PeriodSelector
                 month={currentMonth}
                 year={currentYear}
