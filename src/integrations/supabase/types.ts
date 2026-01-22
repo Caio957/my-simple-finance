@@ -14,7 +14,178 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bill_items: {
+        Row: {
+          created_at: string
+          credit_card_id: string
+          current_installment: number
+          description: string
+          id: string
+          start_month: number
+          start_year: number
+          total_installments: number
+          total_value: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credit_card_id: string
+          current_installment?: number
+          description: string
+          id?: string
+          start_month: number
+          start_year: number
+          total_installments?: number
+          total_value: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credit_card_id?: string
+          current_installment?: number
+          description?: string
+          id?: string
+          start_month?: number
+          start_year?: number
+          total_installments?: number
+          total_value?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_items_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_card_bills: {
+        Row: {
+          created_at: string
+          credit_card_id: string
+          extra_value: number
+          id: string
+          is_paid: boolean
+          month: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          credit_card_id: string
+          extra_value?: number
+          id?: string
+          is_paid?: boolean
+          month: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          credit_card_id?: string
+          extra_value?: number
+          id?: string
+          is_paid?: boolean
+          month?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_card_bills_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_cards: {
+        Row: {
+          bank_name: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bank_name: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bank_name?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          month: number
+          user_id: string
+          value: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          month: number
+          user_id: string
+          value: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          month?: number
+          user_id?: string
+          value?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          salary: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          salary?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          salary?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
