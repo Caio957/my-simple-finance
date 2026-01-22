@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, CreditCard, Receipt, Plus, TrendingUp, AlertTriangle, LogOut } from "lucide-react";
+import { Wallet, CreditCard, Receipt, Plus, TrendingUp, AlertTriangle, LogOut, Loader2 } from "lucide-react";
 import { SummaryCard } from "@/components/finance/SummaryCard";
 import { CreditCardBill } from "@/components/finance/CreditCardBill";
 import { ExpenseItem } from "@/components/finance/ExpenseItem";
@@ -7,9 +7,9 @@ import { QuickAddExpense } from "@/components/finance/QuickAddExpense";
 import { PeriodSelector } from "@/components/finance/PeriodSelector";
 import { BankFormDialog } from "@/components/finance/BankFormDialog";
 import { SalaryInput } from "@/components/finance/SalaryInput";
-import { BillItem } from "@/components/finance/BillDetailsDialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useFinanceData } from "@/hooks/useFinanceData";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,184 +21,100 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface Bill {
-  id: string;
-  bankName: string;
-  value: number;
-  isPaid: boolean;
-  items: BillItem[];
-}
-
-interface Expense {
-  id: string;
-  description: string;
-  value: number;
-}
-
-const initialBills: Bill[] = [
-  { 
-    id: "1", 
-    bankName: "Nubank", 
-    value: 1250.00, 
-    isPaid: false,
-    items: [
-      { id: "1a", description: "iPhone 15", totalValue: 6000, currentInstallment: 3, totalInstallments: 12 },
-      { id: "1b", description: "Tênis Nike", totalValue: 800, currentInstallment: 2, totalInstallments: 4 },
-    ]
-  },
-  { id: "2", bankName: "Inter", value: 890.50, isPaid: true, items: [] },
-  { 
-    id: "3", 
-    bankName: "Itaú", 
-    value: 2100.00, 
-    isPaid: false,
-    items: [
-      { id: "3a", description: "Geladeira", totalValue: 4500, currentInstallment: 5, totalInstallments: 10 },
-    ]
-  },
-  { id: "4", bankName: "C6 Bank", value: 450.75, isPaid: false, items: [] },
-];
-
-const initialExpenses: Expense[] = [
-  { id: "1", description: "Almoço restaurante", value: 45.90 },
-  { id: "2", description: "Uber para o trabalho", value: 28.50 },
-  { id: "3", description: "Farmácia", value: 67.80 },
-];
-
 const Index = () => {
   const { signOut } = useAuth();
-  const [bills, setBills] = useState<Bill[]>(initialBills);
-  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
-  // Salary state
-  const [salary, setSalary] = useState(0);
+  const {
+    loading,
+    salary,
+    creditCards,
+    expenses,
+    updateSalary,
+    addCreditCard,
+    updateCreditCard,
+    deleteCreditCard,
+    toggleBillPaid,
+    addExtraValueToBill,
+    addBillItem,
+    deleteBillItem,
+    addExpense,
+    deleteExpense,
+    calculateBillValue,
+    calculateTotalDebt,
+    getCurrentInstallment,
+  } = useFinanceData(currentMonth, currentYear);
 
   // Modal states
   const [isBankDialogOpen, setIsBankDialogOpen] = useState(false);
-  const [editingBill, setEditingBill] = useState<Bill | null>(null);
-  const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
+  const [editingCard, setEditingCard] = useState<{ id: string; bankName: string } | null>(null);
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
 
   // Cálculos de totais
-  const totalBills = bills.reduce((sum, bill) => sum + bill.value, 0);
-  const pendingBills = bills
-    .filter((bill) => !bill.isPaid)
-    .reduce((sum, bill) => sum + bill.value, 0);
-  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.value, 0);
+  const totalBills = creditCards.reduce((sum, card) => sum + calculateBillValue(card), 0);
+  const pendingBills = creditCards
+    .filter((card) => !card.bill?.is_paid)
+    .reduce((sum, card) => sum + calculateBillValue(card), 0);
+  const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.value), 0);
   const totalSpent = totalBills + totalExpenses;
   const balance = salary - totalSpent;
-
-  // Calcular dívida total (parcelas restantes)
-  const calculateBillTotalDebt = (bill: Bill) => {
-    return bill.items.reduce((sum, item) => {
-      const remainingInstallments = item.totalInstallments - item.currentInstallment + 1;
-      const installmentValue = item.totalValue / item.totalInstallments;
-      return sum + (installmentValue * remainingInstallments);
-    }, 0);
-  };
-
-  const totalDebtAllCards = bills.reduce((sum, bill) => sum + calculateBillTotalDebt(bill), 0);
+  const totalDebtAllCards = creditCards.reduce((sum, card) => sum + calculateTotalDebt(card), 0);
 
   // Handlers
-  const handleAddValueToBill = (billId: string, value: number) => {
-    setBills((prev) =>
-      prev.map((bill) =>
-        bill.id === billId ? { ...bill, value: bill.value + value } : bill
-      )
-    );
+  const handleAddValueToBill = async (cardId: string, value: number) => {
+    await addExtraValueToBill(cardId, value);
   };
 
-  const handleToggleBillStatus = (billId: string) => {
-    setBills((prev) =>
-      prev.map((bill) =>
-        bill.id === billId ? { ...bill, isPaid: !bill.isPaid } : bill
-      )
-    );
+  const handleToggleBillStatus = async (cardId: string) => {
+    const card = creditCards.find((c) => c.id === cardId);
+    const newStatus = !(card?.bill?.is_paid ?? false);
+    await toggleBillPaid(cardId, newStatus);
   };
 
   const handleOpenAddBank = () => {
-    setEditingBill(null);
+    setEditingCard(null);
     setIsBankDialogOpen(true);
   };
 
-  const handleEditBill = (billId: string) => {
-    const bill = bills.find((b) => b.id === billId);
-    if (bill) {
-      setEditingBill(bill);
+  const handleEditCard = (cardId: string) => {
+    const card = creditCards.find((c) => c.id === cardId);
+    if (card) {
+      setEditingCard({ id: card.id, bankName: card.bank_name });
       setIsBankDialogOpen(true);
     }
   };
 
-  const handleSaveBill = (data: { bankName: string; value: number }) => {
-    if (editingBill) {
-      // Editing existing bill
-      setBills((prev) =>
-        prev.map((bill) =>
-          bill.id === editingBill.id
-            ? { ...bill, bankName: data.bankName, value: data.value }
-            : bill
-        )
-      );
+  const handleSaveCard = async (data: { bankName: string; value: number }) => {
+    if (editingCard) {
+      await updateCreditCard(editingCard.id, data.bankName);
     } else {
-      // Adding new bill
-      const newBill: Bill = {
-        id: Date.now().toString(),
-        bankName: data.bankName,
-        value: data.value,
-        isPaid: false,
-        items: [],
-      };
-      setBills((prev) => [...prev, newBill]);
+      const card = await addCreditCard(data.bankName);
+      if (card && data.value > 0) {
+        await addExtraValueToBill(card.id, data.value);
+      }
     }
-    setEditingBill(null);
+    setEditingCard(null);
+    setIsBankDialogOpen(false);
   };
 
-  const handleUpdateBillItems = (billId: string, items: BillItem[]) => {
-    setBills((prev) =>
-      prev.map((bill) => {
-        if (bill.id === billId) {
-          // Recalcular o valor mensal baseado nos itens
-          const itemsMonthlyValue = items.reduce((sum, item) => {
-            return sum + (item.totalValue / item.totalInstallments);
-          }, 0);
-          // Manter valores avulsos + valor dos itens
-          const baseValue = bill.value - bill.items.reduce((sum, item) => {
-            return sum + (item.totalValue / item.totalInstallments);
-          }, 0);
-          return { 
-            ...bill, 
-            items,
-            value: Math.max(0, baseValue) + itemsMonthlyValue
-          };
-        }
-        return bill;
-      })
-    );
+  const handleDeleteCard = (cardId: string) => {
+    setDeletingCardId(cardId);
   };
 
-  const handleDeleteBill = (billId: string) => {
-    setDeletingBillId(billId);
-  };
-
-  const confirmDeleteBill = () => {
-    if (deletingBillId) {
-      setBills((prev) => prev.filter((bill) => bill.id !== deletingBillId));
-      setDeletingBillId(null);
+  const confirmDeleteCard = async () => {
+    if (deletingCardId) {
+      await deleteCreditCard(deletingCardId);
+      setDeletingCardId(null);
     }
   };
 
-  const handleAddExpense = (description: string, value: number) => {
-    const newExpense: Expense = {
-      id: Date.now().toString(),
-      description,
-      value,
-    };
-    setExpenses((prev) => [newExpense, ...prev]);
+  const handleAddExpense = async (description: string, value: number) => {
+    await addExpense(description, value);
   };
 
-  const handleDeleteExpense = (expenseId: string) => {
-    setExpenses((prev) => prev.filter((exp) => exp.id !== expenseId));
+  const handleDeleteExpense = async (expenseId: string) => {
+    await deleteExpense(expenseId);
   };
 
   const handlePreviousMonth = () => {
@@ -218,6 +134,57 @@ const Index = () => {
       setCurrentMonth((prev) => prev + 1);
     }
   };
+
+  // Transform items for CreditCardBill component
+  const getCardBillItems = (card: typeof creditCards[0]) => {
+    return card.items.map((item) => ({
+      id: item.id,
+      description: item.description,
+      totalValue: Number(item.total_value),
+      currentInstallment: getCurrentInstallment(item),
+      totalInstallments: item.total_installments,
+    }));
+  };
+
+  const handleUpdateBillItems = async (
+    cardId: string,
+    items: Array<{
+      id: string;
+      description: string;
+      totalValue: number;
+      currentInstallment: number;
+      totalInstallments: number;
+    }>
+  ) => {
+    // Find items to delete (in current card but not in new items)
+    const card = creditCards.find((c) => c.id === cardId);
+    if (!card) return;
+
+    const currentItemIds = card.items.map((i) => i.id);
+    const newItemIds = items.map((i) => i.id);
+
+    // Delete removed items
+    for (const itemId of currentItemIds) {
+      if (!newItemIds.includes(itemId)) {
+        await deleteBillItem(itemId);
+      }
+    }
+
+    // Add new items (items without a real ID)
+    for (const item of items) {
+      if (!currentItemIds.includes(item.id)) {
+        await addBillItem(cardId, item.description, item.totalValue, item.totalInstallments);
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -246,7 +213,7 @@ const Index = () => {
               />
             </div>
             <div className="flex items-center justify-between border-t border-border pt-3 -mb-1">
-              <SalaryInput value={salary} onChange={setSalary} />
+              <SalaryInput value={salary} onChange={updateSalary} />
             </div>
           </div>
         </div>
@@ -293,7 +260,7 @@ const Index = () => {
             <div>
               <h2 className="text-lg font-semibold text-foreground">Faturas de Cartão</h2>
               <p className="text-sm text-muted-foreground">
-                {bills.filter((b) => b.isPaid).length}/{bills.length} pagas
+                {creditCards.filter((c) => c.bill?.is_paid).length}/{creditCards.length} pagas
               </p>
             </div>
             <Button onClick={handleOpenAddBank} className="gap-2">
@@ -302,7 +269,7 @@ const Index = () => {
             </Button>
           </div>
           
-          {bills.length === 0 ? (
+          {creditCards.length === 0 ? (
             <div className="text-center py-12 rounded-xl border border-dashed border-border">
               <CreditCard className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
               <p className="text-muted-foreground">Nenhum cartão cadastrado.</p>
@@ -316,19 +283,19 @@ const Index = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {bills.map((bill) => (
+              {creditCards.map((card) => (
                 <CreditCardBill
-                  key={bill.id}
-                  id={bill.id}
-                  bankName={bill.bankName}
-                  value={bill.value}
-                  isPaid={bill.isPaid}
-                  items={bill.items}
-                  totalDebt={calculateBillTotalDebt(bill)}
+                  key={card.id}
+                  id={card.id}
+                  bankName={card.bank_name}
+                  value={calculateBillValue(card)}
+                  isPaid={card.bill?.is_paid ?? false}
+                  items={getCardBillItems(card)}
+                  totalDebt={calculateTotalDebt(card)}
                   onAddValue={handleAddValueToBill}
                   onToggleStatus={handleToggleBillStatus}
-                  onEdit={handleEditBill}
-                  onDelete={handleDeleteBill}
+                  onEdit={handleEditCard}
+                  onDelete={handleDeleteCard}
                   onUpdateItems={handleUpdateBillItems}
                 />
               ))}
@@ -364,7 +331,7 @@ const Index = () => {
                   key={expense.id}
                   id={expense.id}
                   description={expense.description}
-                  value={expense.value}
+                  value={Number(expense.value)}
                   onDelete={handleDeleteExpense}
                 />
               ))
@@ -377,12 +344,12 @@ const Index = () => {
       <BankFormDialog
         open={isBankDialogOpen}
         onOpenChange={setIsBankDialogOpen}
-        onSave={handleSaveBill}
-        editingBill={editingBill}
+        onSave={handleSaveCard}
+        editingBill={editingCard ? { id: editingCard.id, bankName: editingCard.bankName, value: 0, isPaid: false } : null}
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deletingBillId} onOpenChange={() => setDeletingBillId(null)}>
+      <AlertDialog open={!!deletingCardId} onOpenChange={() => setDeletingCardId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir cartão?</AlertDialogTitle>
@@ -393,7 +360,7 @@ const Index = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDeleteBill}
+              onClick={confirmDeleteCard}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Excluir
